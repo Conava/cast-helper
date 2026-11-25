@@ -318,11 +318,18 @@ func (s *session) videoCodecs() ([]string, error) {
 	return have, nil
 }
 
+// encoderFor names the VA-API encoder for codec. Drivers that only offer the
+// low-power entrypoint, such as Intel's iHD on many chips, register it as
+// vah264lpenc / vah265lpenc, which takes the same properties.
 func encoderFor(codec string) string {
+	name := "vah264"
 	if codec == "hevc" {
-		return "vah265enc"
+		name = "vah265"
 	}
-	return "vah264enc"
+	if !hasElement(name+"enc") && hasElement(name+"lpenc") {
+		return name + "lpenc"
+	}
+	return name + "enc"
 }
 
 // launch starts the mirroring receiver app.

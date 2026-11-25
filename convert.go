@@ -138,7 +138,7 @@ func convertVideo(ctx context.Context, file string, v videoInfo, progress func(f
 	w, h := v.target()
 	desc := fmt.Sprintf("filesrc name=src ! decodebin name=d "+
 		"d. ! queue ! vapostproc ! video/x-raw(memory:VAMemory),width=%d,height=%d ! "+
-		"vah265enc rate-control=cbr bitrate=30000 key-int-max=60 b-frames=0 ! h265parse ! video/x-h265,stream-format=hvc1 ! mux.video_0 ", w, h)
+		"%s rate-control=cbr bitrate=30000 key-int-max=60 b-frames=0 ! h265parse ! video/x-h265,stream-format=hvc1 ! mux.video_0 ", w, h, encoderFor("hevc"))
 	if v.audio {
 		desc += "d. ! queue ! audioconvert ! audioresample ! avenc_aac bitrate=256000 ! aacparse ! mux.audio_0 "
 	}
