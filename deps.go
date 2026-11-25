@@ -88,7 +88,9 @@ var dependencies = []dependency{
 	// H.264/HEVC for patent reasons (Fedora's and openSUSE's Mesa).
 	{ID: "gst-plugin-va", Required: true, Features: []string{"mirroring", "convert"},
 		present: func() bool {
-			return hasElement("vapostproc") && (hasElement(encoderFor("h264")) || hasElement(encoderFor("hevc")))
+			_, _, h264 := vaElements("h264")
+			_, _, hevc := vaElements("hevc")
+			return h264 || hevc
 		},
 		Packages: map[string]string{"debian": "gstreamer1.0-plugins-bad", "fedora": "gstreamer1-plugins-bad-free", "opensuse": "gstreamer-plugins-bad"},
 		Hints:    map[string]string{"fedora": "rpmfusionVA", "opensuse": "packmanVA"}},

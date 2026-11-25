@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -308,7 +309,7 @@ func (s *session) videoCodecs() ([]string, error) {
 	}
 	var have []string
 	for _, c := range want {
-		if hasElement(encoderFor(c)) {
+		if _, _, ok := vaElements(c); ok {
 			have = append(have, c)
 		}
 	}
@@ -318,18 +319,37 @@ func (s *session) videoCodecs() ([]string, error) {
 	return have, nil
 }
 
-// encoderFor names the VA-API encoder for codec. Drivers that only offer the
-// low-power entrypoint, such as Intel's iHD on many chips, register it as
-// vah264lpenc / vah265lpenc, which takes the same properties.
-func encoderFor(codec string) string {
-	name := "vah264"
+// vaElements names the VA-API postproc and encoder for codec, both on the
+// first GPU that can encode it. GStreamer gives the first VA device plain
+// names (vapostproc, vah264enc) and the others their render node's
+// (varenderD129postproc), so a laptop whose second GPU encodes needs the
+// latter. Drivers that only offer the low-power entrypoint, such as Intel's
+// iHD on many chips, register vah264lpenc, which takes the same properties.
+func vaElements(codec string) (postproc, enc string, ok bool) {
+	nodes, _ := filepath.Glob("/dev/dri/renderD*")
+	return pickVAElements(codec, nodes, hasElement)
+}
+
+func pickVAElements(codec string, nodes []string, has func(string) bool) (postproc, enc string, ok bool) {
+	c := "h264"
 	if codec == "hevc" {
-		name = "vah265"
+		c = "h265"
 	}
-	if !hasElement(name+"enc") && hasElement(name+"lpenc") {
-		return name + "lpenc"
+	prefixes := []string{"va"}
+	for _, n := range nodes {
+		prefixes = append(prefixes, "va"+filepath.Base(n))
 	}
-	return name + "enc"
+	for _, p := range prefixes {
+		if !has(p + "postproc") {
+			continue
+		}
+		for _, e := range []string{p + c + "enc", p + c + "lpenc"} {
+			if has(e) {
+				return p + "postproc", e, true
+			}
+		}
+	}
+	return "vapostproc", "va" + c + "enc", false
 }
 
 // launch starts the mirroring receiver app.
@@ -537,7 +557,8 @@ func (s *session) negotiate(cast *castConn, transport string, codecs []string) (
 
 func (s *session) videoPipeline(portal *portalSession, codec string) string {
 	o := s.opts
-	enc, parse, caps := encoderFor(codec), "h264parse", "video/x-h264"
+	postproc, enc, _ := vaElements(codec)
+	parse, caps := "h264parse", "video/x-h264"
 	if codec == "hevc" {
 		parse, caps = "h265parse", "video/x-h265"
 	}
@@ -545,12 +566,12 @@ func (s *session) videoPipeline(portal *portalSession, codec string) string {
 	// The portal's buffer pool is small: always copy into a fresh VA surface so
 	// the encoder's reference frames never pin a portal buffer.
 	return fmt.Sprintf("pipewiresrc fd=%d path=%d do-timestamp=true keepalive-time=%d ! "+
-		"video/x-raw(ANY),pixel-aspect-ratio=1/1 ! vapostproc disable-passthrough=true add-borders=true ! "+
+		"video/x-raw(ANY),pixel-aspect-ratio=1/1 ! %s disable-passthrough=true add-borders=true ! "+
 		"%s ! videorate skip-to-first=true ! %s,framerate=%d/1 ! "+
 		"queue max-size-buffers=1 max-size-bytes=0 max-size-time=0 leaky=downstream ! "+
 		"%s name=enc aud=true b-frames=0 key-int-max=%d rate-control=cbr bitrate=%d target-usage=4 ! %s,profile=main ! "+
 		"%s config-interval=-1 ! %s,stream-format=byte-stream,alignment=au ! appsink name=out sync=false max-buffers=4",
-		portal.fd.Fd(), portal.node, 1+999/o.FPS, raw, raw, o.FPS, enc, 2*o.FPS, o.Kbps, caps, parse, caps)
+		portal.fd.Fd(), portal.node, 1+999/o.FPS, postproc, raw, raw, o.FPS, enc, 2*o.FPS, o.Kbps, caps, parse, caps)
 }
 
 // codecParameter describes a stream the way Chrome's mirroring does: Main
