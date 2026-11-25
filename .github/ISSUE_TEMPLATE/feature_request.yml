@@ -1,0 +1,55 @@
+name: Feature Request
+description: Suggest a new feature for cast-helper, such as a device, format or distribution it should support
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        One feature per request, please. Focused requests with a clear use case are much easier to act on than broad ones.
+  - type: textarea
+    id: description
+    attributes:
+      label: Feature description
+      description: What should cast-helper do?
+    validations:
+      required: true
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Use case
+      description: What do you want to do with it, and why doesn't cast-helper cover that today?
+    validations:
+      required: true
+  - type: input
+    id: hardware
+    attributes:
+      label: Devices, distributions or hardware involved
+      description: If the feature is about specific devices or systems, name them. It helps to know who could test it.
+      placeholder: e.g. HomePod mini, NixOS, Intel Arc GPU
+    validations:
+      required: false
+  - type: dropdown
+    id: test
+    attributes:
+      label: Could you test it?
+      description: Many features depend on hardware the maintainer doesn't have.
+      options:
+        - "Yes"
+        - "No"
+    validations:
+      required: false
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Proposed solution
+      description: Any ideas for how it could work? Commands, protocol fields or libraries are welcome.
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: Other tools or workarounds that do something similar today.
+    validations:
+      required: false

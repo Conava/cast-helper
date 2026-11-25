@@ -1,0 +1,71 @@
+name: Support Request
+description: Help with installing, building or using cast-helper
+labels:
+  - question
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Not sure whether it's a bug? Ask here. If it turns out to be one, it gets moved over.
+  - type: dropdown
+    id: client
+    attributes:
+      label: Used from
+      options:
+        - Cast plugin (Dux Shell)
+        - Dux Player
+        - My own app or script
+    validations:
+      required: true
+  - type: dropdown
+    id: distribution
+    attributes:
+      label: Distribution
+      options:
+        - Arch Linux
+        - CachyOS
+        - Debian
+        - Ubuntu
+        - Fedora
+        - openSUSE
+        - NixOS
+        - Other (specify below)
+    validations:
+      required: true
+  - type: input
+    id: distribution_other
+    attributes:
+      label: If other, which distribution?
+    validations:
+      required: false
+  - type: textarea
+    id: description
+    attributes:
+      label: What do you need help with?
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: What you've tried
+      description: Commands you ran and what they printed, documentation you followed.
+    validations:
+      required: false
+  - type: textarea
+    id: check
+    attributes:
+      label: Dependency check
+      description: |
+        The output of `echo '{"cmd": "check"}' | timeout 5 cast-helper`. It lists what's installed and what's missing. With the Cast plugin, *Copy report* in its settings under Troubleshooting includes it.
+      value: |
+        <details>
+        <summary>Output</summary>
+
+        ```
+
+
+        ```
+
+        </details>
+    validations:
+      required: false

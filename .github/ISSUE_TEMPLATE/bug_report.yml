@@ -1,0 +1,112 @@
+name: Bug Report
+description: cast-helper crashes, fails to cast, or behaves unexpectedly
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        One problem per report, please. Check the open issues first, yours may already be there.
+  - type: dropdown
+    id: client
+    attributes:
+      label: Used from
+      options:
+        - Cast plugin (Dux Shell)
+        - Dux Player
+        - My own app or script
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: cast-helper version
+      description: The output of `cast-helper version`.
+      placeholder: e.g. 0.2.0
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Installed from
+      options:
+        - AUR
+        - Release download
+        - Built from source
+        - Nix
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: distribution
+    attributes:
+      label: Distribution
+      options:
+        - Arch Linux
+        - CachyOS
+        - Debian
+        - Ubuntu
+        - Fedora
+        - openSUSE
+        - NixOS
+        - Other (specify below)
+    validations:
+      required: true
+  - type: input
+    id: distribution_other
+    attributes:
+      label: If other, which distribution?
+    validations:
+      required: false
+  - type: input
+    id: device
+    attributes:
+      label: Cast device
+      description: The TV, Chromecast or AirPlay receiver involved, with its model if you know it.
+      placeholder: e.g. Chromecast with Google TV, LG OLED C3, Apple TV 4K
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen instead?
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Report or logs
+      description: |
+        **Cast plugin:** in the plugin's settings under Troubleshooting, turn on *Detailed logging*, reproduce the problem, then click *Copy report* and paste it below.
+        **Anything else:** paste `~/.cache/dms/cast/serve.log` (and `serve.old.log` if the problem was before the last restart), plus the output of `echo '{"cmd": "check"}' | timeout 5 cast-helper`.
+        Logs can contain device names, local addresses and file names, so look them over first.
+      value: |
+        <details>
+        <summary>Logs</summary>
+
+        ```
+
+
+        ```
+
+        </details>
+    validations:
+      required: true
