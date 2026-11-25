@@ -1,6 +1,7 @@
 package main
 
 import (
+	"slices"
 	"testing"
 	"time"
 )
@@ -58,5 +59,33 @@ func TestEncoderControl(t *testing.T) {
 	t.Logf("2 s at 4000 kbit/s: %d bytes, at 500 kbit/s: %d bytes", high, low)
 	if low*3 > high {
 		t.Fatal("output did not shrink after lowering the bitrate")
+	}
+}
+
+// TestPickVAElements covers the element names GStreamer gives VA devices: the
+// first device plain, the others by render node, and low-power encoders.
+func TestPickVAElements(t *testing.T) {
+	nodes := []string{"/dev/dri/renderD128", "/dev/dri/renderD129"}
+	cases := []struct {
+		name, codec string
+		elements    []string
+		pp, enc     string
+		ok          bool
+	}{
+		{"one GPU", "h264", []string{"vapostproc", "vah264enc"}, "vapostproc", "vah264enc", true},
+		{"low power only", "hevc", []string{"vapostproc", "vah265lpenc"}, "vapostproc", "vah265lpenc", true},
+		{"normal over low power", "h264", []string{"vapostproc", "vah264enc", "vah264lpenc"}, "vapostproc", "vah264enc", true},
+		// An NVIDIA GPU on nouveau decodes but can't encode; the Intel one is second.
+		{"second GPU encodes", "h264", []string{"vapostproc", "vah264dec", "varenderD129postproc", "varenderD129h264lpenc"},
+			"varenderD129postproc", "varenderD129h264lpenc", true},
+		{"encoder without its postproc", "h264", []string{"varenderD129h264enc"}, "vapostproc", "vah264enc", false},
+		{"nothing", "hevc", nil, "vapostproc", "vah265enc", false},
+	}
+	for _, c := range cases {
+		has := func(n string) bool { return slices.Contains(c.elements, n) }
+		pp, enc, ok := pickVAElements(c.codec, nodes, has)
+		if pp != c.pp || enc != c.enc || ok != c.ok {
+			t.Errorf("%s: got %s %s %v, want %s %s %v", c.name, pp, enc, ok, c.pp, c.enc, c.ok)
+		}
 	}
 }
