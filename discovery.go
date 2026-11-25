@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 
 	"github.com/godbus/dbus/v5"
@@ -67,6 +68,16 @@ func parseTXT(protocol, name string, txt [][]byte) Device {
 	}
 	d.ID = protocol + ":" + id
 	return d
+}
+
+// canMirror reports whether an AirPlay receiver advertises screen mirroring,
+// feature bit 7. Speakers such as HomePods don't, and doubletake only
+// mirrors, so they would only ask for a pairing code they can't show. A
+// receiver whose features can't be read is kept.
+func canMirror(features string) bool {
+	low, _, _ := strings.Cut(features, ",")
+	f, err := strconv.ParseUint(low, 0, 64)
+	return err != nil || f&(1<<7) != 0
 }
 
 // instance is one mDNS service as avahi reports it; the same device shows once per interface.
@@ -222,6 +233,10 @@ func (d *Discovery) loop() {
 			if r.err != nil {
 				log.Printf("discovery: can't resolve %s: %v", r.in.name, r.err)
 				d.reg.removed(r.in) // device advertises but doesn't answer; drop it until it re-announces
+				continue
+			}
+			if r.dev.Protocol == "airplay" && !canMirror(r.dev.Features) {
+				debugf("discovery: skipping %s, an AirPlay receiver without screen mirroring", r.dev.Name)
 				continue
 			}
 			if d.reg.resolved(r.in, r.dev) {

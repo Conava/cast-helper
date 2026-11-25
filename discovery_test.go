@@ -38,3 +38,17 @@ func TestParseTXTAndDedupe(t *testing.T) {
 		t.Fatal("stale resolve must not add")
 	}
 }
+
+func TestCanMirror(t *testing.T) {
+	for features, want := range map[string]bool{
+		"0x5A7FFFF7,0x1E":       true,  // Apple TV
+		"0x7F8AD0,0x38BCF46":    true,  // LG webOS TV
+		"0x444f8a00":            false, // Yamaha receiver, audio only
+		"0x4A7FCA00,0xBC354BD0": false, // speaker without bit 7
+		"":                      true,  // unreadable: keep it
+	} {
+		if got := canMirror(features); got != want {
+			t.Errorf("canMirror(%q) = %v, want %v", features, got, want)
+		}
+	}
+}
