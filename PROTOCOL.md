@@ -1,27 +1,47 @@
 # cast-helper protocol
 
-One JSON object per line in each direction. Clients send commands, the helper sends events. The
-full state is pushed on every change, so a client never polls and keeps no state of its own.
+This describes how an app casts through cast-helper.
+The Cast plugin and Dux Player both use it, and any app that can start a process and read its output line by line can do the same.
+
+Each direction carries one JSON object per line. Clients send commands and the helper sends events.
+The helper pushes the full state on every change, so a client never has to poll or keep its own state.
+
+## Trying it
+
+```console
+$ cast-helper attach
+{"devices":[],"event":"state","noCast":null,"session":null}
+{"cmd": "discover", "on": true}
+{"devices":[{"id":"6f3c…","name":"Living Room TV","model":"Chromecast","protocol":"chromecast","protocols":["chromecast"]}],"event":"state","noCast":null,"session":null}
+{"cmd": "play", "device": "6f3c…", "path": "/home/me/Videos/holiday.mp4"}
+```
+
+Every following `state` event shows the session moving from `starting` to `casting`, including the position.
+`{"cmd": "stop"}` ends the cast.
+
+## Writing a client
+
+1. Find the binary: `cast-helper` on `PATH`, otherwise `~/.local/share/dms/cast/bin/cast-helper`. If neither exists, point the user to the [installation guide](README.md#installation).
+2. Run `cast-helper attach` and keep it running while your app is open.
+3. Send `hello` with the id and name of your app, so other clients can show who started a cast.
+4. Send `check`. Compare its `protocol` with the version your client needs (see [Versions](#versions)) and show `missing` to the user, because nothing works without those packages.
+5. Build your UI from the latest `state` event only. It always contains everything.
+6. Turn `discover` on while a device list is shown, and off again when it closes.
+7. Show your own text for each error `code`. `detail` is meant for logs.
 
 ## Connecting
 
-- `cast-helper attach` is what a client runs. It bridges its stdin and stdout to the shared helper
-  on `$XDG_RUNTIME_DIR/cast-helper.sock`, starting `cast-helper serve` first when none is running.
-  It exits with 0 when its stdin closes and 1 when the helper went away. Clients can also connect
-  to the socket directly.
-- The shared helper sends every client a `state` event as soon as it connects, then every change.
-  A cast keeps running when the client that started it disconnects; the helper exits a few seconds
-  after the last client is gone and nothing is casting.
-- Plain `cast-helper` speaks the same protocol on its own stdin and stdout for a single client,
-  and stops its cast when stdin closes.
-- Replies to `check`, `thumbnail` and `playlist`, and errors about a command itself (`busy`,
-  `unsupportedLink`), go to the client that sent it. Everything else goes to all clients.
+- `cast-helper attach`: what a client runs. It connects its stdin and stdout to the shared helper on `$XDG_RUNTIME_DIR/cast-helper.sock` and starts `cast-helper serve` first if none is running. It exits with 0 when its stdin closes and with 1 when the helper is gone. Clients can also connect to the socket directly.
+- Shared helper: sends every client a `state` event right after it connects, then one on every change. A cast keeps running when the client that started it disconnects. The helper exits a few seconds after the last client is gone and nothing is casting.
+- Plain `cast-helper`: speaks the same protocol on its own stdin and stdout for a single client, and stops its cast when stdin closes.
+- Replies to `check`, `thumbnail` and `playlist`, and errors about the command itself (`busy`, `unsupportedLink`), only go to the client that sent the command. Everything else goes to all clients.
 
 ## Versions
 
-`check` reports `protocol`. Changes are additive: commands and fields are added, not changed or
-removed, so a client works with any helper whose `protocol` is at least the one it was written
-for, and should suggest an update otherwise. Helpers that don't report it speak protocol 1.
+`check` reports the `protocol` version.
+Changes are additive: commands and fields get added, but never changed or removed.
+A client works with any helper whose `protocol` is at least the version it was written for, and should suggest an update otherwise.
+Helpers that don't report a version speak protocol 1.
 
 | Protocol | Added |
 |---|---|
@@ -30,8 +50,16 @@ for, and should suggest an update otherwise. Helpers that don't report it speak 
 | 3 | `edit`, `repeat` and `times` for a running queue |
 | 4 | `noCast` in `state`, `debug` |
 
-`cast-helper install-missing [all|required]` installs what's missing through the distro's package
-manager. It's meant for a terminal, so it can ask for the password and confirmation.
+## Other subcommands
+
+```bash
+cast-helper version
+cast-helper install-missing [all|required]   # default all
+```
+
+`install-missing` installs everything `check` reports as missing through the distribution's package manager, or through an AUR helper for AUR packages.
+It is meant to run in a terminal, so it can ask for the password and for confirmation.
+A client that offers an install button should open a terminal with it.
 
 ## Commands
 
@@ -60,18 +88,19 @@ manager. It's meant for a terminal, so it can ask for the password and confirmat
 {"cmd": "volume", "level": 0.4}                                // receiver volume, where supported
 ```
 
-Queue items and `play` take optional metadata (protocol 2): `title`, `artist`, `album`, and `art`,
-an http(s) link or an absolute path of a cover image. The device shows it, and the session reports
-it instead of the file name or link. A song file's own tags fill in what isn't given. A playlist
-file in `items` expands in place.
+Queue items and `play` take optional metadata (protocol 2): `title`, `artist`, `album`, and `art`, which is an http(s) link or the absolute path of a cover image.
+The device shows it, and the session reports it instead of the file name or link.
+The tags of a song file fill in whatever isn't given.
+A playlist file in `items` is expanded in place.
 
-`edit` (protocol 3) replaces the queue of a running cast, for a show edited while it plays. Items
-already in the queue keep what was prepared for them. When the item at `index` is the one playing,
-it keeps playing; otherwise the device shows the item at `index`.
+`edit` (protocol 3) replaces the queue of a running cast, for example when a show is edited while it plays.
+Items that were already in the queue keep what was prepared for them.
+If the item at `index` is the one playing, it keeps playing. Otherwise the device switches to the item at `index`.
 
-`repeat` (protocol 3) says what plays again when it ends by itself: the whole queue (`show`) or the
-current item (`item`), `times` more times, or until stopped with `times` 0. An empty `repeat` turns
-it off. `loop: true` is the same as `show` until stopped. Next and previous always move on.
+`repeat` (protocol 3) sets what plays again when it ends on its own: the whole queue (`show`) or the current item (`item`), either `times` more times or until stopped with `times` 0.
+An empty `repeat` turns it off.
+`loop: true` is the same as `show` until stopped.
+Next and previous always move on.
 
 ## Events
 
@@ -97,25 +126,13 @@ it off. `loop: true` is the same as `show` until stopped. Next and previous alwa
 {"event": "warning", "code": "airplaySound"}                 // AirPlay sound stays on this computer
 ```
 
-`detail` is English for logs. Clients show their own text for each `code`: `airplayFailed`,
-`airplayNoMedia`, `avahi`, `busy`, `deviceLost`, `deviceNotFound`, `encoderMissing`,
-`launchRefused`, `loadFailed`, `missingDependency`, `pipelineFailed`, `portalDenied`, `portInUse`,
-`receiverStopped`, `serverUnreachable`, `unsupportedFile`, `unsupportedLink`, `youtubeFailed`,
-`youtubeInQueue`.
+`detail` is English text for logs. Clients show their own text for each `code`: `airplayFailed`, `airplayNoMedia`, `avahi`, `busy`, `deviceLost`, `deviceNotFound`, `encoderMissing`, `launchRefused`, `loadFailed`, `missingDependency`, `pipelineFailed`, `portalDenied`, `portInUse`, `receiverStopped`, `serverUnreachable`, `unsupportedFile`, `unsupportedLink`, `youtubeFailed`, `youtubeInQueue`.
 
 ## Behavior
 
-- **Dependencies are optional at start.** Each feature checks its packages when used and fails with
-  `missingDependency` naming them. Features: `discovery`, `mirroring`, `sound`, `tvOnlySound`,
-  `files`, `mkv`, `convert`, `photos`, `heic`, `thumbnails`.
-- **Queue:** a single `play` is a queue of one. The current item and the next video or next two
-  photos are prepared ahead (served, remuxed, converted, shrunk). Photos advance on the interval,
-  everything else when it ends. A YouTube link plays alone, in the device's YouTube app.
-- **Devices:** a TV with Chromecast and AirPlay is one device, keeping its Chromecast id.
-  Mirroring uses Chromecast unless `protocol` says AirPlay; files, links and shows always use
-  Chromecast.
-- **Position:** the receiver reports it only on changes. Count on from `positionAt` while playing.
-- **MPRIS:** a cast shows up as `org.mpris.MediaPlayer2.cast`. File playback has play, pause,
-  next, previous and seek; for mirroring, pause and stop end the cast.
-- **Debugging:** `CAST_DEBUG=1` logs every Cast message and HTTP request. The shared helper logs to
-  `~/.cache/dms/cast/serve.log`.
+- Dependencies: none are needed to start. Each feature checks its packages when it is used and fails with `missingDependency`, naming the missing ones. The features are `discovery`, `mirroring`, `sound`, `tvOnlySound`, `files`, `mkv`, `convert`, `photos`, `heic` and `thumbnails`.
+- Queue: a single `play` is a queue with one item. The current item and the next video or next two photos are prepared ahead (served, remuxed, converted, shrunk). Photos advance on the interval, everything else when it ends. A YouTube link plays on its own, in the YouTube app of the device.
+- Devices: a TV with Chromecast and AirPlay is one device and keeps its Chromecast id. Mirroring uses Chromecast unless `protocol` asks for AirPlay. Files, links and shows always use Chromecast.
+- Position: the receiver only reports it when it changes. While playing, count on from `positionAt`.
+- MPRIS: a cast shows up as `org.mpris.MediaPlayer2.cast`. File playback supports play, pause, next, previous and seek. For mirroring, pause and stop end the cast.
+- Debugging: `CAST_DEBUG=1` logs every Cast message and HTTP request. The shared helper logs to `~/.cache/dms/cast/serve.log`.
