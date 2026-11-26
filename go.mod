@@ -1,4 +1,4 @@
-module github.com/Conava/dux-cast
+module github.com/Conava/cast-helper
 
 go 1.25.0
 
