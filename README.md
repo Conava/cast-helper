@@ -50,6 +50,26 @@ Optional dependencies for more formats, sound on the TV only, HEIC photos and Ai
 yay -S --needed --asdeps gst-plugins-good gst-libav libheif pipewire libpulse doubletake-bin
 ```
 
+### NixOS
+
+cast-helper is not in nixpkgs yet, but this repository contains a Nix package including all GStreamer plugins.
+Add it to your `configuration.nix`:
+
+```nix
+{ pkgs, ... }:
+{
+  environment.systemPackages = [
+    (pkgs.callPackage (builtins.fetchGit { url = "https://github.com/Conava/cast-helper.git"; ref = "master"; }) { })
+  ];
+  services.avahi.enable = true;
+}
+```
+
+To try it without changing your configuration, run `nix-build` in a clone and use `result/bin/cast-helper`.
+
+Mirroring requires `hardware.graphics.enable = true;` and a VA-API driver that can encode H.264 or HEVC.
+Mesa covers AMD, on Intel add `intel-media-driver` to `hardware.graphics.extraPackages`.
+
 ### Debian, Ubuntu, Fedora, openSUSE
 
 Install the dependencies first. The first line of each command are required dependencies, the second contains the optional dependencies for full feature support and can be omitted.

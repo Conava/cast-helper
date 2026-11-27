@@ -50,5 +50,5 @@ For anything that reaches a device, build it through the dev script of the Cast 
 ## Shipping
 
 - Commits: `cast-helper: short lowercase summary`, or `ci:` and `repo:` for everything else.
-- Releases: a `vX.Y.Z` tag that matches `const version` in `main.go`. CI then builds `cast-helper-x86_64`, `cast-helper-aarch64` and `SHA256SUMS` and publishes the release. The asset names follow `uname -m`, because the install commands and the updater of the Cast plugin download them by that name.
+- Releases: a `vX.Y.Z` tag that matches `const version` in `main.go` and `version` in `default.nix`. CI then builds `cast-helper-x86_64`, `cast-helper-aarch64` and `SHA256SUMS` and publishes the release. The asset names follow `uname -m`, because the install commands and the updater of the Cast plugin download them by that name.
 - AUR: after a release, `cast-helper` and `cast-helper-bin` are bumped to it. `cast-helper-git` builds `master` and needs nothing.
