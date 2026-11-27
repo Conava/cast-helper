@@ -254,7 +254,7 @@ func (h *helper) serveClient(c *client, r io.Reader) {
 }
 
 // version is this release; the release workflow checks the tag against it.
-const version = "0.2.0"
+const version = "0.2.1"
 
 // protocolVersion goes up when commands or events are added. Changes are
 // additive, so a client needs a helper with at least its own number.
